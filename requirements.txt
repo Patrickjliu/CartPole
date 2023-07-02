@@ -2,3 +2,4 @@ gym==0.26.2
 numpy==1.25.0
 torch==2.0.1
 matplotlib==3.7.1
+tqdm==4.65.0

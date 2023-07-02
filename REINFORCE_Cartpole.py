@@ -13,9 +13,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 # Normalize Discounted Rewards
-def normalize(x, gamma=0.95):
+def normalize(x):
     # Normalize the rewards by subtracting the mean and dividing by the standard deviation
     x -= torch.mean(x)
     x /= torch.std(x)
@@ -41,15 +42,18 @@ class NN(nn.Module):
 # Set up environment and neural network
 env = gym.make("CartPole-v1")
 input_size = env.observation_space.shape[0]  # Observation space dimension
-hidden_size = 64  # Number of neurons in the hidden layer
+hidden_size = 128  # Number of neurons in the hidden layer
 output_size = env.action_space.n  # Number of actions
 
 policy_network = NN(input_size, hidden_size, output_size)  # Construct the neural network
 optimizer = optim.Adam(policy_network.parameters(), lr=0.003)  # Set up optimizer
 
 done = False
-num_episodes = 200  # Number of episodes to run
-gamma = 0.95  # Discount factor for cumulative rewards
+num_episodes = 500  # Number of episodes to run
+gamma = 0.98  # Discount factor for cumulative rewards
+max_episode_steps = 1500
+
+progress_bar = tqdm(total=num_episodes, desc = "Episodes", unit="episode", ncols=80) # Set up progress bar for episodes
 
 cumulativeRewards = []  # Store cumulative rewards per episode
 losses = [] # Store loss per episode
@@ -57,7 +61,10 @@ episode_lengths = [] # Store number of actions/steps per episode
 
 for episode in range(num_episodes):
     if episode == num_episodes - 1:
+        user_input = input("\nPress return or enter to continue.")
+        print("Rendering last Episode")
         env = gym.make("CartPole-v1", render_mode="human")  # Render last episode
+        max_episode_steps = 10000
 
     episode_rewards = []  # Store episode rewards
     episode_log_probs = []  # Store log probabilities of chosen actions
@@ -66,6 +73,7 @@ for episode in range(num_episodes):
     state, _ = env.reset()  # Reset the environment and get initial observation
 
     while True:
+
         state = np.array(state)
         state = torch.tensor(state, dtype=torch.float)
 
@@ -78,8 +86,7 @@ for episode in range(num_episodes):
         episode_rewards.append(reward)  # Store the reward
         episode_log_probs.append(log_prob)  # Store the log probability
 
-        if done:
-            episode_lengths.append(steps)
+        if done or steps > max_episode_steps:
 
             discounted_rewards = np.zeros_like(episode_rewards)  # Array to store discounted rewards
             cumulative_rewards = 0
@@ -105,37 +112,47 @@ for episode in range(num_episodes):
             optimizer.step() # Update parameters - adjust model parameters based on gradients using optimizer
 
             cumulativeRewards.append(cumulative_rewards)
+            episode_lengths.append(steps)
             losses.append(loss.item())
             break
 
         state = next_state
         steps+=1
 
+    progress_bar.update(1)
+
+progress_bar.close()
+
 env.close()
 
+# Calculate rolling average of rewards
+rewardsRollingAverage = np.convolve(cumulativeRewards, np.ones(5)/5, mode='valid')
+
 # Plot episode rewards
-plt.plot(cumulativeRewards)
+plt.plot(cumulativeRewards, label="Rewards")
+plt.plot(range(0, len(rewardsRollingAverage)), rewardsRollingAverage, label="Rolling Average")
 plt.xlim(0, num_episodes)
-plt.ylim(0, 30)
 plt.xlabel("Episode Number")
 plt.ylabel("Reward Value")
-plt.title("Episode Rewards")
-plt.show()
+plt.title("Episode Rewards and Running Average")
+plt.legend()
+plt.savefig("episode_rewards.png")
+plt.close()
 
 # Plot losses
 plt.plot(losses)
 plt.xlim(0, num_episodes)
-# plt.ylim()
 plt.xlabel("Episode Number")
 plt.ylabel("Loss Value")
-plt.title("Episode Loses")
-plt.show()
+plt.title("Episode Losses")
+plt.savefig("episode_losses.png")
+plt.close()
 
-# Plot Episode Length
+# Plot episode lengths
 plt.plot(episode_lengths)
 plt.xlim(0, num_episodes)
-# plt.ylim()
 plt.xlabel("Episode Number")
-plt.ylabel("Ammount of Steps/Actions")
-plt.title("Episode Length")
-plt.show()
+plt.ylabel("Amount of Steps/Actions")
+plt.title("Episode Lengths")
+plt.savefig("episode_lengths.png")
+plt.close()
