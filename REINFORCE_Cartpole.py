@@ -50,8 +50,8 @@ optimizer = optim.Adam(policy_network.parameters(), lr=0.003)  # Set up optimize
 
 done = False
 num_episodes = 500  # Number of episodes to run
-gamma = 0.98  # Discount factor for cumulative rewards
-max_episode_steps = 1500
+gamma = 0.99  # Discount factor for cumulative rewards
+max_episode_steps = 1000
 
 progress_bar = tqdm(total=num_episodes, desc = "Episodes", unit="episode", ncols=80) # Set up progress bar for episodes
 
@@ -60,11 +60,19 @@ losses = [] # Store loss per episode
 episode_lengths = [] # Store number of actions/steps per episode
 
 for episode in range(num_episodes):
+
+    # Option to render the last episode
     if episode == num_episodes - 1:
-        user_input = input("\nPress return or enter to continue.")
-        print("Rendering last Episode")
-        env = gym.make("CartPole-v1", render_mode="human")  # Render last episode
-        max_episode_steps = 10000
+        user_input = input("\nPress return or enter to continue or 'q' to quit.")
+        print(user_input == 'q')
+        if user_input.lower() == 'q':
+            print("Continuing")
+        else:
+            print("Rendering last Episode")
+            env = gym.make("CartPole-v1", render_mode="human")  # Render last episode
+            ui_steps = input("Input number of steps for the last episode: ")
+            max_episode_steps = ui_steps
+            
 
     episode_rewards = []  # Store episode rewards
     episode_log_probs = []  # Store log probabilities of chosen actions
@@ -73,13 +81,17 @@ for episode in range(num_episodes):
     state, _ = env.reset()  # Reset the environment and get initial observation
 
     while True:
-
+        
+        #Converts state into tensor
         state = np.array(state)
         state = torch.tensor(state, dtype=torch.float)
 
         action_probs = policy_network(state)  # Forward pass to get action probabilities
-        action_dist = torch.distributions.Categorical(action_probs)
+
+        action_dist = torch.distributions.Categorical(action_probs) # Creates a Categorical Distribution of action probabilites
+
         action = action_dist.sample()  # Sample an action from the distribution
+
         log_prob = action_dist.log_prob(action)  # Calculate the log probability of the chosen action
 
         next_state, reward, done, _, _ = env.step(action.item())  # Take action in the environment
@@ -99,11 +111,11 @@ for episode in range(num_episodes):
                 discounted_rewards[t] = cumulative_rewards
 
 
-            discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float)
-            discounted_rewards = normalize(discounted_rewards)  # Normalize the discounted rewards
+            discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float) # Make discounted rewards into a tensor
+            discounted_rewards = normalize(discounted_rewards) # Normalize the discounted rewards
 
             episode_log_probs = torch.stack(episode_log_probs)
-            loss = torch.sum(-episode_log_probs * discounted_rewards)  # Calculate the loss
+            loss = torch.sum(-episode_log_probs * discounted_rewards) # Calculate the loss
 
             optimizer.zero_grad() # Clear gradients - reset the gradients of the optimizer
 
@@ -126,8 +138,7 @@ progress_bar.close()
 env.close()
 
 # Calculate rolling average of rewards
-rewardsRollingAverage = np.convolve(cumulativeRewards, np.ones(5)/5, mode='valid')
-
+rewardsRollingAverage = np.convolve(cumulativeRewards, np.ones(25)/25, mode='full')
 # Plot episode rewards
 plt.plot(cumulativeRewards, label="Rewards")
 plt.plot(range(0, len(rewardsRollingAverage)), rewardsRollingAverage, label="Rolling Average")
