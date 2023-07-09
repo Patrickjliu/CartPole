@@ -63,16 +63,15 @@ for episode in range(num_episodes):
 
     # Option to render the last episode
     if episode == num_episodes - 1:
-        user_input = input("\nPress return or enter to continue or 'q' to quit.")
-        print(user_input == 'q')
-        if user_input.lower() == 'q':
-            print("Continuing")
+        user_input = input("\nWould you like to render the last episode? Press 'Enter' to render or 'skip' to continue without rendering.")
+
+        if user_input.lower() == 'skip':
+            print("Continuing without rendering.")
         else:
-            print("Rendering last Episode")
-            env = gym.make("CartPole-v1", render_mode="human")  # Render last episode
-            ui_steps = input("Input number of steps for the last episode: ")
+            print("Rendering the last episode...")
+            env = gym.make("CartPole-v1", render_mode="human")  # Render the last episode
+            ui_steps = input("Enter the number of steps for the last episode: ")
             max_episode_steps = ui_steps
-            
 
     episode_rewards = []  # Store episode rewards
     episode_log_probs = []  # Store log probabilities of chosen actions
@@ -98,7 +97,7 @@ for episode in range(num_episodes):
         episode_rewards.append(reward)  # Store the reward
         episode_log_probs.append(log_prob)  # Store the log probability
 
-        if done or steps > max_episode_steps:
+        if done or steps > int(max_episode_steps):
 
             discounted_rewards = np.zeros_like(episode_rewards)  # Array to store discounted rewards
             cumulative_rewards = 0
@@ -112,9 +111,11 @@ for episode in range(num_episodes):
 
 
             discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float) # Make discounted rewards into a tensor
+
             discounted_rewards = normalize(discounted_rewards) # Normalize the discounted rewards
 
             episode_log_probs = torch.stack(episode_log_probs)
+
             loss = torch.sum(-episode_log_probs * discounted_rewards) # Calculate the loss
 
             optimizer.zero_grad() # Clear gradients - reset the gradients of the optimizer
@@ -126,6 +127,7 @@ for episode in range(num_episodes):
             cumulativeRewards.append(cumulative_rewards)
             episode_lengths.append(steps)
             losses.append(loss.item())
+
             break
 
         state = next_state
