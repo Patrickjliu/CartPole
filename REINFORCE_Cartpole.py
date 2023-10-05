@@ -49,7 +49,7 @@ policy_network = NN(input_size, hidden_size, output_size)  # Construct the neura
 optimizer = optim.Adam(policy_network.parameters(), lr=0.003)  # Set up optimizer
 
 done = False
-num_episodes = 500  # Number of episodes to run
+num_episodes = 200  # Number of episodes to run
 gamma = 0.99  # Discount factor for cumulative rewards
 max_episode_steps = 1000
 
